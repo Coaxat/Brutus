@@ -1,4 +1,3 @@
-from genericpath import isfile
 import os
 import time
 import filetype
@@ -8,8 +7,6 @@ from zipfile import ZipFile
 from multiprocessing import Pool, cpu_count
 from itertools import product
 from tqdm import tqdm
-
-import sys
 
 class Brutus(object):
     def __init__(
@@ -42,6 +39,7 @@ class Brutus(object):
     def target(self):
         return self._target
     
+
     @target.setter
     def target(self, target):
         ext = self.get_target_type(target)
@@ -55,7 +53,7 @@ class Brutus(object):
         self._forcing_function = getattr(self, 'open_' + ext)
 
 
-    def get_target_type(self, target):
+    def get_target_type(self, target: str):
         try:
             type = filetype.guess_extension(target)
         except Exception as err:
@@ -63,7 +61,7 @@ class Brutus(object):
         else:
             return type
     
-    
+
     def generate_password(self):
         for i in product(self.charset, repeat=self._generator_length):
             yield ''.join(i)
@@ -122,7 +120,7 @@ class Brutus(object):
                 print(f"[#] Attack finished in {exec_time} seconds") 
                 break
 
-    
+
     def bruteforce_attack(self):
         exec_start = time.perf_counter()
 
@@ -140,22 +138,16 @@ class Brutus(object):
                 print(f"\n[+]\033[1;32m Password FOUND: {result}\033[1;0m\n")
                 print(f"[#] Attack finished in {exec_time} seconds") 
                 break
-            
             i += 1
 
 
-        
-
-
-
-    def _start(self, iterator):
+    def _start(self, generator):
         bar = tqdm(total=self._tqdm_total)
 
         with Pool(self.max_concurent_worker) as executor:
             for result in executor.imap_unordered(
                 self._forcing_function,
-                iterator()
-                #self._dictionnary_passwords
+                generator()
             ):
                 bar.update()
 
@@ -167,37 +159,32 @@ class Brutus(object):
                     return result
         bar.refresh()
         bar.__del__()
-
         return None
 
 
-    def open_pdf(self, passwd):
+    def open_pdf(self, password: str):
         try:
-            with pikepdf.open(self._target, password=passwd):
-                return passwd
-
+            with pikepdf.open(self._target, password=password):
+                return password
         except pikepdf.PasswordError:
             pass
         except Exception as error:
             print(error)
-
         return None
 
 
-    def open_zip(self, passwd):
-        pwd = bytes(passwd, 'utf-8')
+    def open_zip(self, password):
+        pwd = bytes(password, 'utf-8')
         
         with ZipFile(self._target) as zip:
             try:
                 zip.extractall(pwd=pwd)
-                return passwd
+                return password
             except:
                 pass
-
         return None
 
 
 if __name__ == '__main__':
-
     brutus = Brutus('/data/test-protected.pdf')
     brutus.bruteforce_attack()
